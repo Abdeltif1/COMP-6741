@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Evaluation Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .metric-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            transition: transform 0.3s;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .comparison-table th, .comparison-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .comparison-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        .significant {
+            color: green;
+            font-weight: bold;
+        }
+        .not-significant {
+            color: #888;
+        }
+        .chart-container {
+            height: 300px;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="mb-4">Performance Evaluation Dashboard</h1>
+        
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Overall Performance Metrics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="overall-metrics">
+                            <div class="col-md-3">
+                                <div class="card metric-card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5>Average Rating</h5>
+                                        <h2 id="avg-rating">-</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card metric-card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5>Accuracy</h5>
+                                        <h2 id="avg-accuracy">-</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card metric-card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5>Coherence</h5>
+                                        <h2 id="avg-coherence">-</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card metric-card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5>Satisfaction</h5>
+                                        <h2 id="avg-satisfaction">-</h2>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Agent Performance Comparison</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="agent-comparison-chart"></canvas>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="comparison-table" id="comparison-table">
+                                <thead>
+                                    <tr>
+                                        <th>Agent</th>
+                                        <th>Avg. Rating</th>
+                                        <th>Diff from Overall</th>
+                                        <th>Sample Size</th>
+                                        <th>Statistical Significance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Historical Performance Trends</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="historical-trends-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">Direct Agent Comparison</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-5">
+                                <select id="agent1-select" class="form-select">
+                                    <option value="General">General</option>
+                                    <option value="Admission">Admission</option>
+                                    <option value="AI">AI</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <h5>vs</h5>
+                            </div>
+                            <div class="col-md-5">
+                                <select id="agent2-select" class="form-select">
+                                    <option value="AI">AI</option>
+                                    <option value="General">General</option>
+                                    <option value="Admission">Admission</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button id="compare-btn" class="btn btn-primary mb-3">Compare</button>
+                        <div class="chart-container">
+                            <canvas id="direct-comparison-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load data and initialize charts when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOverallMetrics();
+            loadDetailedBenchmarks();
+            
+            // Set up event listener for direct comparison
+            document.getElementById('compare-btn').addEventListener('click', function() {
+                const agent1 = document.getElementById('agent1-select').value;
+                const agent2 = document.getElementById('agent2-select').value;
+                loadDirectComparison(agent1, agent2);
+            });
+        });
+        
+        // Load overall metrics
+        function loadOverallMetrics() {
+            fetch('/metrics')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.overall) {
+                        document.getElementById('avg-rating').textContent = 
+                            data.overall.avg_rating ? data.overall.avg_rating.toFixed(2) : '-';
+                        document.getElementById('avg-accuracy').textContent = 
+                            data.overall.avg_accuracy ? data.overall.avg_accuracy.toFixed(2) : '-';
+                        document.getElementById('avg-coherence').textContent = 
+                            data.overall.avg_coherence ? data.overall.avg_coherence.toFixed(2) : '-';
+                        document.getElementById('avg-satisfaction').textContent = 
+                            data.overall.avg_satisfaction ? data.overall.avg_satisfaction.toFixed(2) : '-';
+                    }
+                })
+                .catch(error => console.error('Error loading metrics:', error));
+        }
+        
+        // Load detailed benchmarks
+        function loadDetailedBenchmarks() {
+            fetch('/detailed-benchmarks')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'No feedback data available') {
+                        showNoDataMessage();
+                        return;
+                    }
+                    
+                    updateComparisonTable(data);
+                    createAgentComparisonChart(data);
+                    createHistoricalTrendsChart(data);
+                })
+                .catch(error => console.error('Error loading benchmarks:', error));
+        }
+        
+        // Update comparison table
+        function updateComparisonTable(data) {
+            const tableBody = document.getElementById('comparison-table').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
+            
+            if (!data.comparison) return;
+            
+            for (const agent in data.comparison) {
+                const row = tableBody.insertRow();
+                const agentData = data.comparison[agent];
+                
+                // Agent name
+                const cell1 = row.insertCell(0);
+                cell1.textContent = agent;
+                
+                // Average rating
+                const cell2 = row.insertCell(1);
+                cell2.textContent = agentData.avg_rating.toFixed(2);
+                
+                // Difference from overall
+                const cell3 = row.insertCell(2);
+                const diff = agentData.difference_from_overall;
+                cell3.textContent = diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2);
+                cell3.style.color = diff > 0 ? 'green' : (diff < 0 ? 'red' : 'black');
+                
+                // Sample size
+                const cell4 = row.insertCell(3);
+                cell4.textContent = agentData.sample_size || '-';
+                
+                // Statistical significance
+                const cell5 = row.insertCell(4);
+                if (agentData.statistical_significance) {
+                    const sig = agentData.statistical_significance;
+                    if (sig.is_significant) {
+                        cell5.innerHTML = `<span class="significant">Significant (p=${sig.p_value.toFixed(4)})</span>`;
+                    } else {
+                        cell5.innerHTML = `<span class="not-significant">Not significant (p=${sig.p_value.toFixed(4)})</span>`;
+                    }
+                } else {
+                    cell5.textContent = 'Insufficient data';
+                }
+            }
+        }
+        
+        // Create agent comparison chart
+        function createAgentComparisonChart(data) {
+            const ctx = document.getElementById('agent-comparison-chart').getContext('2d');
+            
+            if (!data.comparison) return;
+            
+            const agents = Object.keys(data.comparison);
+            const ratings = agents.map(agent => data.comparison[agent].avg_rating);
+            const accuracy = agents.map(agent => data.comparison[agent].accuracy || 0);
+            const coherence = agents.map(agent => data.comparison[agent].coherence || 0);
+            const satisfaction = agents.map(agent => data.comparison[agent].satisfaction || 0);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: agents,
+                    datasets: [
+                        {
+                            label: 'Average Rating',
+                            data: ratings,
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Accuracy',
+                            data: accuracy,
+                            backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Coherence',
+                            data: coherence,
+                            backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Satisfaction',
+                            data: satisfaction,
+                            backgroundColor: 'rgba(255, 206, 86, 0.7)',
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Create historical trends chart
+        function createHistoricalTrendsChart(data) {
+            const ctx = document.getElementById('historical-trends-chart').getContext('2d');
+            
+            if (!data.historical_trends) return;
+            
+            const datasets = [];
+            const colors = {
+                'General': { bg: 'rgba(54, 162, 235, 0.2)', border: 'rgba(54, 162, 235, 1)' },
+                'Admission': { bg: 'rgba(255, 99, 132, 0.2)', border: 'rgba(255, 99, 132, 1)' },
+                'AI': { bg: 'rgba(75, 192, 192, 0.2)', border: 'rgba(75, 192, 192, 1)' }
+            };
+            
+            for (const agent in data.historical_trends) {
+                const agentData = data.historical_trends[agent];
+                datasets.push({
+                    label: `${agent} Rating`,
+                    data: agentData.ratings,
+                    backgroundColor: colors[agent]?.bg || 'rgba(128, 128, 128, 0.2)',
+                    borderColor: colors[agent]?.border || 'rgba(128, 128, 128, 1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.1
+                });
+            }
+            
+            // Use the first agent's weeks as labels (they should all be the same)
+            const firstAgent = Object.keys(data.historical_trends)[0];
+            const labels = data.historical_trends[firstAgent]?.weeks || [];
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Load direct comparison between two agents
+        function loadDirectComparison(agent1, agent2) {
+            fetch(`/agent-comparison?agent1=${agent1}&agent2=${agent2}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status && data.status.includes('Not enough data')) {
+                        alert(data.status);
+                        return;
+                    }
+                    
+                    createDirectComparisonChart(data);
+                })
+                .catch(error => console.error('Error loading direct comparison:', error));
+        }
+        
+        // Create direct comparison chart
+        function createDirectComparisonChart(data) {
+            const ctx = document.getElementById('direct-comparison-chart').getContext('2d');
+            
+            // Clear previous chart if it exists
+            if (window.directComparisonChart) {
+                window.directComparisonChart.destroy();
+            }
+            
+            const metrics = ['rating', 'accuracy', 'coherence', 'satisfaction'];
+            const labels = metrics.map(m => m.charAt(0).toUpperCase() + m.slice(1));
+            
+            window.directComparisonChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: data.agents[0],
+                            data: metrics.map(m => data.metrics[m][0]),
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(54, 162, 235, 1)'
+                        },
+                        {
+                            label: data.agents[1],
+                            data: metrics.map(m => data.metrics[m][1]),
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(255, 99, 132, 1)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 5
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Show message when no data is available
+        function showNoDataMessage() {
+            const containers = document.querySelectorAll('.chart-container');
+            containers.forEach(container => {
+                container.innerHTML = '<div class="alert alert-info">No feedback data available yet. Start using the chatbot and providing feedback to see performance metrics.</div>';
+            });
+            
+            document.getElementById('comparison-table').getElementsByTagName('tbody')[0].innerHTML = 
+                '<tr><td colspan="5" class="text-center">No feedback data available</td></tr>';
+        }
+    </script>
+</body>
+</html> 

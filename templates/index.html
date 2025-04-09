@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Chatbot</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --general-color: #3a86ff;
+            --admission-color: #38b000;
+            --ai-color: #ff5a5f;
+            --user-color: #4361ee;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin: 15px 0;
+            padding: 0 20px;
+        }
+        
+        .main-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 70px);
+            overflow: hidden;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--card-bg);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin: 0 10px 10px 20px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .metrics-panel {
+            width: 300px;
+            background-color: white;
+            border-radius: 12px;
+            margin: 0 20px 10px 0;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-header {
+            padding: 15px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .metrics-container {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message {
+            display: flex;
+            margin-bottom: 15px;
+            max-width: 80%;
+        }
+        
+        .user-message {
+            margin-left: auto;
+            flex-direction: row-reverse;
+        }
+        
+        .bot-message {
+            margin-right: auto;
+        }
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        
+        .user-avatar {
+            background-color: var(--user-color);
+        }
+        
+        .agent-General .avatar {
+            background-color: var(--general-color);
+        }
+        
+        .agent-Admission .avatar {
+            background-color: var(--admission-color);
+        }
+        
+        .agent-AI .avatar {
+            background-color: var(--ai-color);
+        }
+        
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 18px;
+            margin: 0 10px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        .user-message .message-content {
+            background-color: var(--user-color);
+            color: white;
+            border-top-right-radius: 4px;
+        }
+        
+        .bot-message .message-content {
+            background-color: #f0f2f5;
+            border-top-left-radius: 4px;
+        }
+        
+        .agent-General .message-content {
+            border-left: 3px solid var(--general-color);
+        }
+        
+        .agent-Admission .message-content {
+            border-left: 3px solid var(--admission-color);
+        }
+        
+        .agent-AI .message-content {
+            border-left: 3px solid var(--ai-color);
+        }
+        
+        .agent-label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .agent-General .agent-label {
+            color: var(--general-color);
+        }
+        
+        .agent-Admission .agent-label {
+            color: var(--admission-color);
+        }
+        
+        .agent-AI .agent-label {
+            color: var(--ai-color);
+        }
+        
+        .chat-input {
+            display: flex;
+            padding: 15px 20px;
+            border-top: 1px solid #eaeaea;
+            background-color: white;
+        }
+        
+        #message-input {
+            flex-grow: 1;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 24px;
+            outline: none;
+            font-size: 1rem;
+            transition: border 0.3s ease;
+        }
+        
+        #message-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+        }
+        
+        #send-button {
+            margin-left: 10px;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        
+        #send-button:hover {
+            background-color: #3651d4;
+            transform: scale(1.05);
+        }
+        
+        .thinking {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .dot {
+            width: 8px;
+            height: 8px;
+            background-color: #888;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+        }
+        
+        .metrics-title {
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            text-align: center;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+        
+        .metrics-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .metric-card {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 5px 0;
+            color: var(--primary-color);
+        }
+        
+        .metric-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .rating-stars {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .star {
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #ddd;
+            transition: color 0.2s ease;
+        }
+        
+        .star.active {
+            color: #ffc107;
+        }
+        
+        .star:hover {
+            color: #ffdb70;
+        }
+        
+        /* Fade-in animation for messages */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message {
+            animation: fadeIn 0.3s ease forwards;
+        }
+        
+        /* Agent distribution visualization */
+        .agent-distribution {
+            display: flex;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .agent-bar {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        
+        .agent-bar.general {
+            background-color: var(--general-color);
+        }
+        
+        .agent-bar.admission {
+            background-color: var(--admission-color);
+        }
+        
+        .agent-bar.ai {
+            background-color: var(--ai-color);
+        }
+        
+        .agent-legend {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 5px;
+            font-size: 0.8rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        .legend-color.general {
+            background-color: var(--general-color);
+        }
+        
+        .legend-color.admission {
+            background-color: var(--admission-color);
+        }
+        
+        .legend-color.ai {
+            background-color: var(--ai-color);
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .chat-container {
+                margin: 0 10px;
+                height: 70vh;
+            }
+            
+            .metrics-panel {
+                width: auto;
+                margin: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="chat-container">
+            <div class="chat-header">
+                <div>Concordia University Assistant</div>
+                <div class="metrics-container">
+                    <span id="response-count">0</span> responses | Avg. Rating: <span id="avg-rating">0.0</span>
+                </div>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="message bot-message agent-General">
+                    <div class="avatar"><i class="fas fa-robot"></i></div>
+                    <div class="message-content">
+                        <div class="agent-label"><i class="fas fa-circle-info"></i> General Agent</div>
+                        Welcome to the Multi-Agent Chatbot! I can help with general questions, Concordia University admissions, or AI topics. What would you like to know?
+                    </div>
+                </div>
+            </div>
+            <div class="chat-input">
+                <input type="text" id="message-input" placeholder="Type your message here...">
+                <button id="send-button"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+        
+        <div class="metrics-panel">
+            <div class="metrics-title">Conversation Metrics</div>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Total Messages</div>
+                    <div class="metric-value" id="total-messages">1</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-label">Agent Distribution</div>
+                    <div class="agent-distribution">
+                        <div class="agent-bar general" id="general-bar" style="width: 100%"></div>
+                        <div class="agent-bar admission" id="admission-bar" style="width: 0%"></div>
+                        <div class="agent-bar ai" id="ai-bar" style="width: 0%"></div>
+                    </div>
+                    <div class="agent-legend">
+                        <div class="legend-item">
+                            <div class="legend-color general"></div>
+                            <span id="general-count">1</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color admission"></div>
+                            <span id="admission-count">0</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color ai"></div>
+                            <span id="ai-count">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-label">Average Rating</div>
+                    <div class="metric-value" id="avg-rating-full">0.0</div>
+                    <div class="rating-stars" id="avg-rating-stars">
+                        <span class="star">★</span>
+                        <span class="star">★</span>
+                        <span class="star">★</span>
+                        <span class="star">★</span>
+                        <span class="star">★</span>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-label">Detailed Analytics</div>
+                    <a href="/metrics-dashboard" target="_blank" style="
+                        display: block;
+                        margin-top: 10px;
+                        padding: 8px 15px;
+                        background-color: var(--primary-color);
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 5px;
+                        text-align: center;
+                        transition: background-color 0.2s ease;">
+                        <i class="fas fa-chart-line"></i> View Full Dashboard
+                    </a>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-label">Ollama Usage</div>
+                    <a href="/metrics-dashboard#ollama-stats" target="_blank" style="
+                        display: block;
+                        margin-top: 10px;
+                        padding: 8px 15px;
+                        background-color: var(--primary-color);
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 5px;
+                        text-align: center;
+                        transition: background-color 0.2s ease;">
+                        <i class="fas fa-server"></i> View Ollama Stats
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chat-messages');
+            const messageInput = document.getElementById('message-input');
+            const sendButton = document.getElementById('send-button');
+            
+            // Metrics elements
+            const totalMessagesEl = document.getElementById('total-messages');
+            const responseCountEl = document.getElementById('response-count');
+            const avgRatingEl = document.getElementById('avg-rating');
+            const avgRatingFullEl = document.getElementById('avg-rating-full');
+            const generalCountEl = document.getElementById('general-count');
+            const admissionCountEl = document.getElementById('admission-count');
+            const aiCountEl = document.getElementById('ai-count');
+            
+            // Agent distribution bars
+            const generalBar = document.getElementById('general-bar');
+            const admissionBar = document.getElementById('admission-bar');
+            const aiBar = document.getElementById('ai-bar');
+            
+            // Metrics data
+            let metrics = {
+                totalMessages: 1,
+                responseCount: 0,
+                ratings: [],
+                agentCounts: {
+                    General: 1,
+                    Admission: 0,
+                    AI: 0
+                }
+            };
+            
+            function updateMetrics() {
+                totalMessagesEl.textContent = metrics.totalMessages;
+                responseCountEl.textContent = metrics.responseCount;
+                generalCountEl.textContent = metrics.agentCounts.General;
+                admissionCountEl.textContent = metrics.agentCounts.Admission;
+                aiCountEl.textContent = metrics.agentCounts.AI;
+                
+                // Update agent distribution bars
+                const totalAgents = metrics.agentCounts.General + metrics.agentCounts.Admission + metrics.agentCounts.AI;
+                if (totalAgents > 0) {
+                    generalBar.style.width = (metrics.agentCounts.General / totalAgents * 100) + '%';
+                    admissionBar.style.width = (metrics.agentCounts.Admission / totalAgents * 100) + '%';
+                    aiBar.style.width = (metrics.agentCounts.AI / totalAgents * 100) + '%';
+                }
+                
+                // Calculate average rating
+                if (metrics.ratings.length > 0) {
+                    const sum = metrics.ratings.reduce((a, b) => a + b, 0);
+                    const avg = (sum / metrics.ratings.length).toFixed(1);
+                    avgRatingEl.textContent = avg;
+                    avgRatingFullEl.textContent = avg;
+                    
+                    // Update stars
+                    const stars = document.querySelectorAll('#avg-rating-stars .star');
+                    const avgRating = sum / metrics.ratings.length;
+                    stars.forEach((star, index) => {
+                        if (index < Math.floor(avgRating)) {
+                            star.classList.add('active');
+                        } else if (index < avgRating) {
+                            star.classList.add('active');
+                            star.style.opacity = avgRating - Math.floor(avgRating);
+                        } else {
+                            star.classList.remove('active');
+                            star.style.opacity = 1;
+                        }
+                    });
+                }
+            }
+            
+            function getAgentIcon(agentType) {
+                switch(agentType) {
+                    case 'General': return '<i class="fas fa-circle-info"></i>';
+                    case 'Admission': return '<i class="fas fa-graduation-cap"></i>';
+                    case 'AI': return '<i class="fas fa-microchip"></i>';
+                    default: return '<i class="fas fa-circle-info"></i>';
+                }
+            }
+            
+            function getAgentAvatar(agentType) {
+                switch(agentType) {
+                    case 'General': return '<i class="fas fa-robot"></i>';
+                    case 'Admission': return '<i class="fas fa-user-graduate"></i>';
+                    case 'AI': return '<i class="fas fa-brain"></i>';
+                    default: return '<i class="fas fa-robot"></i>';
+                }
+            }
+            
+            function addMessage(message, isUser, agentType = null, messageId = null) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+                
+                if (!isUser && agentType) {
+                    messageDiv.classList.add(`agent-${agentType}`);
+                    
+                    const avatarDiv = document.createElement('div');
+                    avatarDiv.className = 'avatar';
+                    avatarDiv.innerHTML = getAgentAvatar(agentType);
+                    messageDiv.appendChild(avatarDiv);
+                    
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'message-content';
+                    
+                    const agentLabel = document.createElement('div');
+                    agentLabel.className = 'agent-label';
+                    agentLabel.innerHTML = `${getAgentIcon(agentType)} ${agentType} Agent`;
+                    contentDiv.appendChild(agentLabel);
+                    
+                    const messageText = document.createElement('div');
+                    messageText.textContent = message;
+                    contentDiv.appendChild(messageText);
+                    
+                    // Add rating option for bot messages
+                    if (!isUser) {
+                        const ratingDiv = document.createElement('div');
+                        ratingDiv.className = 'rating-stars';
+                        ratingDiv.innerHTML = `
+                            <span class="star" data-value="1">★</span>
+                            <span class="star" data-value="2">★</span>
+                            <span class="star" data-value="3">★</span>
+                            <span class="star" data-value="4">★</span>
+                            <span class="star" data-value="5">★</span>
+                        `;
+                        
+                        // Add rating functionality
+                        ratingDiv.querySelectorAll('.star').forEach(star => {
+                            star.addEventListener('click', function() {
+                                const value = parseInt(this.getAttribute('data-value'));
+                                const stars = this.parentElement.querySelectorAll('.star');
+                                
+                                stars.forEach((s, index) => {
+                                    if (index < value) {
+                                        s.classList.add('active');
+                                    } else {
+                                        s.classList.remove('active');
+                                    }
+                                });
+                                
+                                // Add rating to metrics
+                                metrics.ratings.push(value);
+                                updateMetrics();
+                                
+                                // Send feedback to server
+                                if (messageId) {
+                                    fetch('/feedback', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({ 
+                                            message_id: messageId,
+                                            rating: value 
+                                        }),
+                                    })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        console.log('Feedback saved:', data);
+                                    })
+                                    .catch(error => {
+                                        console.error('Error saving feedback:', error);
+                                    });
+                                }
+                                
+                                // Disable further rating
+                                stars.forEach(s => s.style.pointerEvents = 'none');
+                            });
+                        });
+                        
+                        contentDiv.appendChild(ratingDiv);
+                    }
+                    
+                    messageDiv.appendChild(contentDiv);
+                } else {
+                    const avatarDiv = document.createElement('div');
+                    avatarDiv.className = 'avatar user-avatar';
+                    avatarDiv.innerHTML = '<i class="fas fa-user"></i>';
+                    messageDiv.appendChild(avatarDiv);
+                    
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'message-content';
+                    contentDiv.textContent = message;
+                    messageDiv.appendChild(contentDiv);
+                }
+                
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Update metrics
+                metrics.totalMessages++;
+                if (!isUser && agentType) {
+                    metrics.responseCount++;
+                    metrics.agentCounts[agentType]++;
+                }
+                updateMetrics();
+            }
+            
+            function addThinkingIndicator() {
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.className = 'message bot-message thinking-indicator';
+                thinkingDiv.innerHTML = `
+                    <div class="avatar"><i class="fas fa-robot"></i></div>
+                    <div class="message-content">
+                        <div class="thinking">
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                        </div>
+                    </div>
+                `;
+                chatMessages.appendChild(thinkingDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                return thinkingDiv;
+            }
+            
+            function sendMessage() {
+                const message = messageInput.value.trim();
+                if (message) {
+                    addMessage(message, true);
+                    messageInput.value = '';
+                    
+                    // Show thinking indicator
+                    const thinkingIndicator = addThinkingIndicator();
+                    
+                    fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message: message }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Remove thinking indicator
+                        chatMessages.removeChild(thinkingIndicator);
+                        
+                        // Add bot response with message ID for feedback
+                        addMessage(data.response, false, data.agent_type, data.message_id);
+                    })
+                    .catch(error => {
+                        // Remove thinking indicator
+                        chatMessages.removeChild(thinkingIndicator);
+                        
+                        console.error('Error:', error);
+                        addMessage('Sorry, there was an error processing your request.', false, 'General');
+                    });
+                }
+            }
+            
+            sendButton.addEventListener('click', sendMessage);
+            
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Initialize metrics
+            updateMetrics();
+        });
+
+        // Add a function to fetch RL stats and update the UI
+        function updateRLStats() {
+            fetch('/rl-stats')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.avg_rating) {
+                        // You could add a new section to your metrics panel to display these stats
+                        console.log('RL Stats:', data);
+                        
+                        // Example: Add or update an RL stats card
+                        let rlStatsCard = document.getElementById('rl-stats-card');
+                        if (!rlStatsCard) {
+                            const metricsGrid = document.querySelector('.metrics-grid');
+                            rlStatsCard = document.createElement('div');
+                            rlStatsCard.id = 'rl-stats-card';
+                            rlStatsCard.className = 'metric-card';
+                            metricsGrid.appendChild(rlStatsCard);
+                        }
+                        
+                        // Format agent performance data
+                        let agentPerformanceHTML = '';
+                        for (const [agent, rating] of Object.entries(data.agent_performance)) {
+                            agentPerformanceHTML += `<div>${agent}: ${rating.toFixed(2)}</div>`;
+                        }
+                        
+                        rlStatsCard.innerHTML = `
+                            <div class="metric-label">RL Training Data</div>
+                            <div class="metric-value">${data.avg_rating.toFixed(2)}</div>
+                            <div>Agent Performance:</div>
+                            ${agentPerformanceHTML}
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching RL stats:', error);
+                });
+        }
+
+        // Call updateRLStats periodically
+        setInterval(updateRLStats, 30000); // Every 30 seconds
+    </script>
+</body>
+</html> 

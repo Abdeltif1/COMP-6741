@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chatbot Metrics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .dashboard-container { max-width: 1200px; margin: 0 auto; }
+        .metric-card { 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            padding: 15px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: white;
+        }
+        .chart-container { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 20px; 
+        }
+        .chart { 
+            width: 45%; 
+            min-width: 300px; 
+            height: 300px; 
+            margin-bottom: 20px; 
+        }
+        h1, h2 { color: #333; }
+        .benchmark-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .benchmark-table th, .benchmark-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .benchmark-table th {
+            background-color: #f2f2f2;
+        }
+        .positive { color: green; }
+        .negative { color: red; }
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .metric-box {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 10px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .metric-label {
+            font-size: 14px;
+            color: #666;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #eee;
+            border: 1px solid #ddd;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: white;
+            border-bottom: 1px solid white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <h1>Chatbot Evaluation Metrics Dashboard</h1>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="openTab(event, 'overview')">Overview</div>
+            <div class="tab" onclick="openTab(event, 'benchmarks')">Benchmarks</div>
+            <div class="tab" onclick="openTab(event, 'trends')">Trends</div>
+            <div class="tab" onclick="openTab(event, 'charts')">Charts</div>
+            <div class="tab" onclick="openTab(event, 'ollama-stats')">Ollama Stats</div>
+        </div>
+        
+        <div id="overview" class="tab-content active">
+            <div class="metric-card">
+                <h2>Overall Performance</h2>
+                <div class="metric-grid" id="overall-metrics"></div>
+            </div>
+            
+            <div class="metric-card">
+                <h2>Performance by Agent Type</h2>
+                <div id="agent-metrics"></div>
+            </div>
+        </div>
+        
+        <div id="benchmarks" class="tab-content">
+            <div class="metric-card">
+                <h2>Benchmark Comparisons</h2>
+                <p>How each agent performs relative to the overall average:</p>
+                <div id="benchmark-data"></div>
+            </div>
+            
+            <div class="metric-card">
+                <h2>Time-Based Comparison</h2>
+                <p>Recent performance compared to all-time metrics:</p>
+                <div id="time-comparison"></div>
+            </div>
+        </div>
+        
+        <div id="trends" class="tab-content">
+            <div class="metric-card">
+                <h2>Performance Trends Over Time</h2>
+                <div class="chart">
+                    <canvas id="trends-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div id="charts" class="tab-content">
+            <div class="metric-card">
+                <h2>Performance Charts</h2>
+                <div class="chart-container">
+                    <div class="chart">
+                        <canvas id="rating-chart"></canvas>
+                    </div>
+                    <div class="chart">
+                        <canvas id="metrics-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart">
+                        <canvas id="satisfaction-chart"></canvas>
+                    </div>
+                    <div class="chart">
+                        <canvas id="comparison-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="ollama-stats" class="tab-content">
+            <div class="metric-card">
+                <h2>Ollama Usage Statistics</h2>
+                <div class="metric-grid" id="ollama-metrics"></div>
+                
+                <div class="chart-container">
+                    <div class="chart">
+                        <canvas id="ollama-requests-chart"></canvas>
+                    </div>
+                    <div class="chart">
+                        <canvas id="ollama-tokens-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Tab functionality
+        function openTab(evt, tabName) {
+            const tabContents = document.getElementsByClassName("tab-content");
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove("active");
+            }
+            
+            const tabs = document.getElementsByClassName("tab");
+            for (let i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove("active");
+            }
+            
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+        
+        // Format number with 2 decimal places
+        function formatNumber(num) {
+            return parseFloat(num).toFixed(2);
+        }
+        
+        // Add + sign to positive numbers
+        function formatDifference(num) {
+            const formattedNum = formatNumber(num);
+            return num > 0 ? `+${formattedNum}` : formattedNum;
+        }
+        
+        // Create a metric box
+        function createMetricBox(label, value, max = 5) {
+            return `
+                <div class="metric-box">
+                    <div class="metric-label">${label}</div>
+                    <div class="metric-value">${formatNumber(value)}</div>
+                    <div class="metric-label">out of ${max}</div>
+                </div>
+            `;
+        }
+        
+        // Fetch metrics data and populate the dashboard
+        fetch('/metrics')
+            .then(response => response.json())
+            .then(data => {
+                // Display overall metrics
+                const overallDiv = document.getElementById('overall-metrics');
+                const overall = data.overall;
+                overallDiv.innerHTML = `
+                    ${createMetricBox('Total Interactions', overall.total_interactions, '')}
+                    ${createMetricBox('Average Rating', overall.avg_rating)}
+                    ${createMetricBox('Accuracy', overall.avg_accuracy)}
+                    ${createMetricBox('Coherence', overall.avg_coherence)}
+                    ${createMetricBox('Satisfaction', overall.avg_satisfaction)}
+                `;
+                
+                // Display agent-specific metrics
+                const agentDiv = document.getElementById('agent-metrics');
+                let agentHtml = '';
+                for (const [agent, metrics] of Object.entries(data.by_agent)) {
+                    agentHtml += `
+                        <h3>${agent} Agent</h3>
+                        <div class="metric-grid">
+                            ${createMetricBox('Interactions', metrics.total_interactions, '')}
+                            ${createMetricBox('Rating', metrics.avg_rating)}
+                            ${createMetricBox('Accuracy', metrics.avg_accuracy)}
+                            ${createMetricBox('Coherence', metrics.avg_coherence)}
+                            ${createMetricBox('Satisfaction', metrics.avg_satisfaction)}
+                        </div>
+                    `;
+                }
+                agentDiv.innerHTML = agentHtml;
+                
+                // Create charts
+                createRatingChart(data);
+                createMetricsChart(data);
+                createSatisfactionChart(data);
+                createComparisonChart(data);
+            })
+            .catch(error => {
+                console.error('Error fetching metrics:', error);
+            });
+            
+        // Fetch benchmark data
+        fetch('/benchmarks')
+            .then(response => response.json())
+            .then(data => {
+                // Display benchmark comparisons
+                const benchmarkDiv = document.getElementById('benchmark-data');
+                
+                let benchmarkHtml = `
+                    <table class="benchmark-table">
+                        <thead>
+                            <tr>
+                                <th>Agent</th>
+                                <th>Rating</th>
+                                <th>vs Overall</th>
+                                <th>Accuracy</th>
+                                <th>Coherence</th>
+                                <th>Satisfaction</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                for (const [agent, metrics] of Object.entries(data.comparison)) {
+                    const ratingDiff = metrics.difference_from_overall;
+                    const ratingClass = ratingDiff >= 0 ? 'positive' : 'negative';
+                    
+                    benchmarkHtml += `
+                        <tr>
+                            <td>${agent}</td>
+                            <td>${formatNumber(metrics.avg_rating)}</td>
+                            <td class="${ratingClass}">${formatDifference(ratingDiff)} (${formatNumber(metrics.percent_difference)}%)</td>
+                            <td class="${metrics.accuracy_vs_overall >= 0 ? 'positive' : 'negative'}">${formatDifference(metrics.accuracy_vs_overall)}</td>
+                            <td class="${metrics.coherence_vs_overall >= 0 ? 'positive' : 'negative'}">${formatDifference(metrics.coherence_vs_overall)}</td>
+                            <td class="${metrics.satisfaction_vs_overall >= 0 ? 'positive' : 'negative'}">${formatDifference(metrics.satisfaction_vs_overall)}</td>
+                        </tr>
+                    `;
+                }
+                
+                benchmarkHtml += `
+                        </tbody>
+                    </table>
+                `;
+                
+                benchmarkDiv.innerHTML = benchmarkHtml;
+                
+                // Display time comparison if available
+                if (data.time_comparison) {
+                    const timeDiv = document.getElementById('time-comparison');
+                    const recent = data.time_comparison.recent;
+                    
+                    timeDiv.innerHTML = `
+                        <div class="metric-grid">
+                            ${createMetricBox('Recent Interactions', recent.total_interactions, '')}
+                            ${createMetricBox('Recent Rating', recent.avg_rating)}
+                        </div>
+                        
+                        <h3>Trend Analysis</h3>
+                        <table class="benchmark-table">
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>Recent (7 days)</th>
+                                    <th>All Time</th>
+                                    <th>Trend</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Rating</td>
+                                    <td>${formatNumber(recent.avg_rating)}</td>
+                                    <td>${formatNumber(data.overall.avg_rating)}</td>
+                                    <td class="${data.time_comparison.rating_trend >= 0 ? 'positive' : 'negative'}">
+                                        ${formatDifference(data.time_comparison.rating_trend)}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Accuracy</td>
+                                    <td>${formatNumber(recent.avg_accuracy)}</td>
+                                    <td>${formatNumber(data.overall.avg_accuracy)}</td>
+                                    <td class="${data.time_comparison.accuracy_trend >= 0 ? 'positive' : 'negative'}">
+                                        ${formatDifference(data.time_comparison.accuracy_trend)}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Coherence</td>
+                                    <td>${formatNumber(recent.avg_coherence)}</td>
+                                    <td>${formatNumber(data.overall.avg_coherence)}</td>
+                                    <td class="${data.time_comparison.coherence_trend >= 0 ? 'positive' : 'negative'}">
+                                        ${formatDifference(data.time_comparison.coherence_trend)}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Satisfaction</td>
+                                    <td>${formatNumber(recent.avg_satisfaction)}</td>
+                                    <td>${formatNumber(data.overall.avg_satisfaction)}</td>
+                                    <td class="${data.time_comparison.satisfaction_trend >= 0 ? 'positive' : 'negative'}">
+                                        ${formatDifference(data.time_comparison.satisfaction_trend)}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching benchmarks:', error);
+            });
+            
+        // Fetch trend data
+        fetch('/metrics-trends')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "No feedback data available") {
+                    return;
+                }
+                createTrendsChart(data);
+            })
+            .catch(error => {
+                console.error('Error fetching trends:', error);
+            });
+            
+        // Fetch Ollama stats
+        fetch('/ollama-stats')
+            .then(response => response.json())
+            .then(data => {
+                // Display Ollama metrics
+                const ollamaDiv = document.getElementById('ollama-metrics');
+                
+                ollamaDiv.innerHTML = `
+                    ${createMetricBox('Total Requests', data.total_requests, '')}
+                    ${createMetricBox('Total Tokens', data.total_tokens, '')}
+                    ${createMetricBox('Avg Response Time', data.avg_response_time.toFixed(2), 'ms')}
+                    ${createMetricBox('Uptime', formatUptime(data.uptime_seconds), '')}
+                `;
+                
+                // Create Ollama charts
+                createOllamaRequestsChart(data);
+                createOllamaTokensChart(data);
+            })
+            .catch(error => {
+                console.error('Error fetching Ollama stats:', error);
+                document.getElementById('ollama-metrics').innerHTML = 
+                    '<div class="alert">Error loading Ollama statistics</div>';
+            });
+        
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            
+            return `${days}d ${hours}h ${minutes}m`;
+        }
+        
+        function createOllamaRequestsChart(data) {
+            const ctx = document.getElementById('ollama-requests-chart').getContext('2d');
+            
+            const agents = Object.keys(data.requests_by_agent);
+            const requestCounts = agents.map(agent => data.requests_by_agent[agent]);
+            
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: agents,
+                    datasets: [{
+                        label: 'Requests by Agent',
+                        data: requestCounts,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.6)',
+                            'rgba(54, 162, 235, 0.6)',
+                            'rgba(255, 206, 86, 0.6)',
+                            'rgba(75, 192, 192, 0.6)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Ollama Requests by Agent'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createOllamaTokensChart(data) {
+            const ctx = document.getElementById('ollama-tokens-chart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Total Tokens'],
+                    datasets: [{
+                        label: 'Token Usage',
+                        data: [data.total_tokens],
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Ollama Token Usage'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createRatingChart(data) {
+            const ctx = document.getElementById('rating-chart').getContext('2d');
+            const agents = Object.keys(data.by_agent);
+            const ratings = agents.map(agent => data.by_agent[agent].avg_rating);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: agents,
+                    datasets: [{
+                        label: 'Average Rating by Agent',
+                        data: ratings,
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(153, 102, 255, 0.6)',
+                            'rgba(255, 159, 64, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Average Rating by Agent Type'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createMetricsChart(data) {
+            const ctx = document.getElementById('metrics-chart').getContext('2d');
+            const agents = Object.keys(data.by_agent);
+            
+            const datasets = [
+                {
+                    label: 'Accuracy',
+                    data: agents.map(agent => data.by_agent[agent].avg_accuracy),
+                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Coherence',
+                    data: agents.map(agent => data.by_agent[agent].avg_coherence),
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Satisfaction',
+                    data: agents.map(agent => data.by_agent[agent].avg_satisfaction),
+                    backgroundColor: 'rgba(255, 206, 86, 0.6)',
+                    borderColor: 'rgba(255, 206, 86, 1)',
+                    borderWidth: 1
+                }
+            ];
+            
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: agents,
+                    datasets: datasets
+                },
+                options: {
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 5
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Detailed Metrics by Agent Type'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createSatisfactionChart(data) {
+            const ctx = document.getElementById('satisfaction-chart').getContext('2d');
+            const agents = Object.keys(data.by_agent);
+            
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: agents,
+                    datasets: [{
+                        label: 'User Satisfaction',
+                        data: agents.map(agent => data.by_agent[agent].avg_satisfaction),
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.6)',
+                            'rgba(54, 162, 235, 0.6)',
+                            'rgba(255, 206, 86, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'User Satisfaction by Agent Type'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createComparisonChart(data) {
+            const ctx = document.getElementById('comparison-chart').getContext('2d');
+            const agents = Object.keys(data.by_agent);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: agents,
+                    datasets: [{
+                        label: 'Total Interactions',
+                        data: agents.map(agent => data.by_agent[agent].total_interactions),
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Total Interactions by Agent Type'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createTrendsChart(data) {
+            const ctx = document.getElementById('trends-chart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.dates,
+                    datasets: [
+                        {
+                            label: 'Rating',
+                            data: data.ratings,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Accuracy',
+                            data: data.accuracy,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Coherence',
+                            data: data.coherence,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Satisfaction',
+                            data: data.satisfaction,
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Performance Metrics Over Time'
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html> 
